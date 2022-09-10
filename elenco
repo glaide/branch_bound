@@ -1,0 +1,67 @@
+#!/usr/bin/python3
+import sys
+
+OPT = sys.maxsize
+Xopt = []
+atores = []
+l = 0       # num de grupos
+m = 0       # num de atores
+n = 0       # num de personagens
+contador = 0
+# argumentos:
+limitante_dada    = False # usar função limitante dos profs.
+c_viabilidade   = True  # cortes de viabilidade
+c_otimalidade   = True  # cortes de otimalidade
+
+class Ator:
+    def __init__(self, valor,indice, grupos):
+        self.valor = valor
+        self.g_indice = indice
+        self.grupos = grupos
+
+    def __repr__(self):
+        return str(self.g_indice)
+
+    def __str__(self):
+        return str(self.g_indice)
+
+def main():
+    """Dummy 'other' process to show how this works"""
+
+    print("aa")
+
+    # global atores
+    # global OPT
+    # global Xopt
+    # global contador
+
+    leitura()
+
+
+
+def leitura():
+    print("aa")
+#   declaracao de variaveis
+    global l
+    global m
+    global n
+    global atores
+    atores = []
+    escolhidos = []
+    faltam = []
+    # leitura dos valores iniciais
+    l = int(input()) # num de grupos
+    m = int(input()) # num de atores
+    n = int(input()) # num de personagens
+
+    for i in range(m):
+        v = int(input())
+        s = int(input())
+        grupos = []
+        for j in range(s):
+            grupos.append(j+1)
+        atores[i].append(Ator(v, s, grupos))
+        print("aaa")
+        print(atores[i])
+        print("aaa")
+
