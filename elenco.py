@@ -27,54 +27,55 @@ class Ator:
     def __str__(self):
         return str(self.id)
 
+def solucao_viavel(a_escolhidos):
+    """retorna(viavel: true or false, valor otimo atual)"""
+    grupos = dict()
+    valor = 0
 
-def main():
-    """inicio com a leitura"""
+    if(len(a_escolhidos)!=n):
+        # se n de escolhidos nao satisfaz o numero de personagens necessarios
+        return (False, 0)
 
-    leitura()
-    a_escolhidos = []
-    # se eh a funcao dos alunos, faz uma ordenacao nos valores
-    if not LIMITANTE_DADA:
-      atores.sort(key=lambda x: x.valor)
-    busca_elenco(a_escolhidos, atores)
-
-def busca_elenco(a_escolhidos, a_faltam):
-    # verifica se é viavel
-    (viavel, nova_solucao_otima) = viabilidade()
-    # se é viavel, atualiza os valores da solucao
-    if viavel:
-        if nova_solucao_otima < OPT:
-            OPT = nova_solucao_otima
-            Xopt = a_escolhidos
-    # nao tem mais atores para verificar
-    if not len(atores):
-      return
+    for ator in a_escolhidos:
+        # soma dos valores de atores já escolhidos
+        valor+=ator.valor
+        # conta o numero de grupos que já foi satisfeito
+        for grupo_indice in ator.grupos:
+            grupos[grupo_indice]=1
     
-    # verifica se há corte de viabilidade
-    if C_VIABILIDADE:
-        # chama funcao de corte_viabilidade
-      
-    # verifica se ja corte de otimalidade
-    if C_OTIMALIDADE:
-        # verifica qual é a funcao limitante
-        if LIMITANTE_DADA:
-            # chama funcao do professor
-        else:
-            # faz com funcao dos alunos
-        if (v_atual >= OPT):
-           return
-    # ainda falta escolher atores        
-    e = a_escolhidos.copy()
-    f = a_faltam.copy()
-    ator = f.pop(0)
-    # decido não escolher o próximo ator
-    busca_elenco(e,f)
-    # decido escolher o próximo ator
-    e.append(ator)
-    busca_elenco(e,f)
+    if(len(grupos)!=l):
+        # se o numero total de grupos dos escolhidos nao for o numero total de grupos, nao é viavel
+        return (False, 0)
+
+    return (True, valor)
+    
 
 
-# def viabilidade():
+def corte_viabilidade(a_escolhidos, a_faltam):
+    grupos = dict()
+    for ator in a_escolhidos:
+        # conta o numero de grupos que já foi satisfeito
+        for grupo_indice in ator.grupos:
+            grupos[grupo_indice]=1
+
+    for ator in a_faltam:
+      # conta o numero de grupos que já foi satisfeito
+      for grupo_indice in ator.grupos:
+          grupos[grupo_indice]=1
+
+    size_E = len(a_escolhidos)
+    size_F = len(a_faltam)
+
+    if((size_E+size_F)<n):
+        # se o numero de atores escolhidos+faltantes for menor que o n de personagens total, n é viavel
+        return False
+        
+    if(len(grupos) < l):
+        # se o numero de grupos já escolhidos+faltantes for menor que o n de grupos total, n é viavel
+        return False
+
+    return True
+    
 
 def leitura():
     """"Lê todos os dados de entrada"""
@@ -95,6 +96,54 @@ def leitura():
         for j in range(ator_s):
             grupos.append(j+1)
         atores.append(Ator(ator_v,  grupos, i+1))  
+
+def main():
+    """inicio com a leitura"""
+
+    leitura()
+    a_escolhidos = []
+    # se eh a funcao dos alunos, faz uma ordenacao nos valores
+    if not LIMITANTE_DADA:
+      atores.sort(key=lambda x: x.valor)
+    busca_elenco(a_escolhidos, atores)
+
+def busca_elenco(a_escolhidos, a_faltam):
+    # verifica se é viavel
+    (viavel, nova_solucao_otima) = solucao_viavel(a_escolhidos)
+    # se é viavel, atualiza os valores da solucao
+    if viavel:
+        if nova_solucao_otima < OPT:
+            OPT = nova_solucao_otima
+            Xopt = a_escolhidos
+    # nao tem mais atores para verificar
+    if not len(atores):
+      return
+    
+    # verifica se há corte de viabilidade
+    if C_VIABILIDADE:
+        corte_v= corte_viabilidade(a_escolhidos, a_faltam)
+        if corte_v:
+            return      
+    # verifica se ja corte de otimalidade
+    if C_OTIMALIDADE:
+        # verifica qual é a funcao limitante
+        if LIMITANTE_DADA:
+            # chama funcao do professor
+        else:
+            # faz com funcao dos alunos
+        if (v_atual >= OPT):
+           return
+    # ainda falta escolher atores        
+    e = a_escolhidos.copy()
+    f = a_faltam.copy()
+    ator = f.pop(0)
+    # decido não escolher o próximo ator
+    busca_elenco(e,f)
+    # decido escolher o próximo ator
+    e.append(ator)
+    busca_elenco(e,f)
+
+
 
 
 if __name__ == "__main__":
