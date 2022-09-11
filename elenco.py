@@ -6,6 +6,8 @@ OPT = sys.maxsize
 #conjunto de atores com solucao otima
 Xopt = []
 atores = []
+a_faltam = []
+a_escolhidos = []
 
 l = 0       # num de grupos
 m = 0       # num de atores
@@ -75,7 +77,28 @@ def corte_viabilidade(a_escolhidos, a_faltam):
         return False
 
     return True
-    
+
+def min(a_faltam):
+    # alterar no futuro para buscar melhorias
+    faltam = a_faltam.copy()
+    return faltam.sort()
+
+
+
+def limitante_dada(a_escolhidos, a_faltam):
+    v_total = 0
+    for ator in a_escolhidos:
+        v_total+=ator.valor
+    menor = min(a_faltam)
+    v_total+= (n-len(a_escolhidos))*menor[0]
+    return v_total
+
+
+def limitante_alunas(a_escolhidos, a_faltam):
+    v_total = 0
+    for ator in a_escolhidos:
+        v_total+=ator.valor
+
 
 def leitura():
     """"Lê todos os dados de entrada"""
@@ -128,9 +151,10 @@ def busca_elenco(a_escolhidos, a_faltam):
     if C_OTIMALIDADE:
         # verifica qual é a funcao limitante
         if LIMITANTE_DADA:
-            # chama funcao do professor
+            v_atual = limitante_dada(a_escolhidos, a_faltam)
         else:
-            # faz com funcao dos alunos
+            v_atual = limitante_alunas(a_escolhidos, a_faltam)
+
         if (v_atual >= OPT):
            return
     # ainda falta escolher atores        
