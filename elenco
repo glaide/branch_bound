@@ -1,241 +1,220 @@
 #!/usr/bin/python3
-from glob import glob
 import sys
 import time
 
 
-# variavel com o valor solucao otimo
-
-# conjunto de atores com solucao otima
-OPT_VALOR = sys.maxsize
-Xopt = []
-atores = []
-A_FALTAM = []
-A_ESCOLHIDOS = []
-
+OPT = sys.maxsize
+X_OPT = []
+ATORES = []
+L_GRUPOS = 0  # num de grupos
+M_ATORES = 0  # num de atores
+N_PERSONAGENS = 0  # num de personagens
 
 # argumentos:
 LIMITANTE_DADA = False  # usar função limitante dos profs.
 C_VIABILIDADE = True  # cortes de viabilidade
 C_OTIMALIDADE = True  # cortes de otimalidade
-L_GRUPOS = 0
-M_ATORES = 0
-N_PERSONAGENS = 0
 
 
 class Ator:
-    """ator, que possui um valor, percence a grupos com os id passados"""
-
-    def __init__(self, valor, grupos, id_a):
+    def __init__(self, valor, grupos, id):
         self.valor = valor
         self.grupos = grupos
-        self.id_a = id_a
+        self.id = id
 
     def __repr__(self):
-        return str(self.id_a)
+        return str(self.id)
 
     def __str__(self):
-        return str(self.id_a)
+        return str(self.id)
 
 
-def solucao_viavel():
-    """retorna(viavel: true or false, valor otimo atual)"""
+def main():
+    global ATORES
+    global OPT
+    global X_OPT
+
+    leitura()
+    a_escolhidos = []
+
+    time_start = time.time()
+    if not LIMITANTE_DADA:
+        ATORES.sort(key=lambda x: x.valor)
+
+    # atores.sort(key=lambda x: x.valor)
+
+    busca_elenco_bb(a_escolhidos, ATORES)
+    time_end = time.time()
+
+    if len(X_OPT) != 0:
+        X_OPT.sort(key=lambda x: x.id)
+        print(" ".join(str(x) for x in X_OPT))
+        print(OPT)
+    else:
+        print("Inviável")
+
+    print(str(time_end - time_start), file=sys.stderr)
+
+
+def leitura():
+    # obtém entrada em formato de lista (um item para cada linha)
+    entrada = sys.stdin.readlines()
+    # retira os \n de cada linha de entrada
+    for i, linha in enumerate(entrada):
+        entrada[i] = linha.replace("\n", "")
+
+    linha = entrada[0].split(" ")
+    global L_GRUPOS
+    global M_ATORES
+    global N_PERSONAGENS
+    global ATORES
+    L_GRUPOS = int(linha[0])  # num de grupos
+    M_ATORES = int(linha[1])  # num de atores
+    N_PERSONAGENS = int(linha[2])  # num de personagens
+    n_linha = 1
+
+    # lê informação de cada ator
+    for i in range(M_ATORES):
+        linha = entrada[n_linha].split(" ")
+        a_valor = int(linha[0])
+
+        a_s = int(linha[1])
+        grupos = []
+        n_linha += 1
+
+        for j in range(a_s):
+            grupos.append(int(entrada[n_linha]))
+            n_linha += 1
+
+        ATORES.append(Ator(a_valor, grupos, i + 1))
+
+
+# função limitante que o prof deu
+def limitanteDada(a_escolhidos, f_faltam):
+    global N_PERSONAGENS
+    total = 0
+    # faz o somatório
+    for ator in a_escolhidos:
+        total += ator.valor
+
+    total += (N_PERSONAGENS - len(a_escolhidos)) * menor(f_faltam)
+    return total
+
+
+def limitanteAluna(a_escolhidos, f_faltam):
+    global N_PERSONAGENS  # num de personagens
+    size_e = len(a_escolhidos)
+    size_f = len(f_faltam)
+    # o array de atores faltando está ordenado por menor valor por número de
+    # grupos que o ator satisfaz
+    total = 0
+    for ator in a_escolhidos:
+        total += ator.valor
+
+    i = 0
+    while size_e < N_PERSONAGENS and i < size_f:
+        total += f_faltam[i].valor
+        size_e += 1
+        i += 1
+
+    return total
+
+
+# calculando o valor mínimo de um ator numa lista de atores
+def menor(atores):
+    n_atores = len(atores)
+    if n_atores == 0:
+        return 0
+    # assume como mais barato o primeiro do array
+    minimo = atores[0].valor
+    for i in range(1, n_atores):
+        if atores[i].valor < minimo:
+            minimo = atores[i].valor
+    return minimo
+
+
+def solucao_viavel(a_escolhidos):
+    global L_GRUPOS
+    global N_PERSONAGENS
+    # verifica se o num de atores escolhidos está correto
+    if len(a_escolhidos) != N_PERSONAGENS:
+        return (False, 0)
+    # verifica se todos os grupos estão representados
     grupos = dict()
     valor = 0
-    global N_PERSONAGENS
-    global A_ESCOLHIDOS
-    global L_GRUPOS
-
-    if len(A_ESCOLHIDOS) != N_PERSONAGENS:
-        # se n de escolhidos nao satisfaz o numero de personagens necessarios
-        return (False, 0)
-
-    for ator in A_ESCOLHIDOS:
-        # soma dos valores de atores já escolhidos
+    for ator in a_escolhidos:
         valor += ator.valor
-        # conta o numero de grupos que já foi satisfeito
-        for grupo_indice in ator.grupos:
-            grupos[grupo_indice] = 1
+        for n_grupo in ator.grupos:
+            grupos[n_grupo] = 1
 
-    if len(grupos) != L_GRUPOS:
-        # se o numero total de grupos dos escolhidos nao for o numero total de grupos, nao é viavel
+    if len(grupos) < L_GRUPOS:
         return (False, 0)
 
     return (True, valor)
 
 
-def corte_viabilidade():
-    """retorna true or false para fazer o corte de viabilidade"""
-    global A_ESCOLHIDOS
-    global A_FALTAM
-    global L_GRUPOS
+def busca_elenco_bb(a_escolhidos, f_faltam):
+    global OPT  # sol. ótima
+    global X_OPT  # val. sol. ótima
+    global LIMITANTE_DADA  # usar função limitante dos profs.
+    global C_VIABILIDADE  # cortes de viabilidade
+    global C_OTIMALIDADE  # cortes de otimalidade
 
+    # verifica se o grupo de atores escolhidos é viável
+    (viavel, novo_val) = solucao_viavel(a_escolhidos)
+    if viavel:
+        if novo_val < OPT:
+            OPT = novo_val
+            X_OPT = a_escolhidos
+    # não tem mais atores para escolher
+    if len(f_faltam) == 0:
+        return
+    # faz o corte de viabilidade (as escolhas de atores restantes formam uma resposta possível?)
+    if C_VIABILIDADE:
+        if corte_viabilidade(a_escolhidos, f_faltam):
+            return
+    # faz o corte de otimalidade (existe a possibilidade uma escolha de atores mais barata?)
+    if C_OTIMALIDADE:
+        B = OPT
+        if LIMITANTE_DADA:
+            B = limitanteDada(a_escolhidos, f_faltam)
+        else:
+            B = limitanteAluna(a_escolhidos, f_faltam)
+        if B >= OPT:
+            return
+
+    # ainda falta escolher atores
+    E = a_escolhidos.copy()
+    F = f_faltam.copy()
+    ator = F.pop(0)
+    # decido não escolher o próximo ator
+    busca_elenco_bb(E, F)
+    # decido escolher o próximo ator
+    E.append(ator)
+    busca_elenco_bb(E, F)
+
+
+def corte_viabilidade(a_escolhidos, f_faltam):
+    global L_GRUPOS  # num de grupos
+    global N_PERSONAGENS  # num. personagens
+
+    if len(f_faltam) + len(a_escolhidos) < N_PERSONAGENS:
+        return True  # se for menos que precisamos, corta
+    # verifica se o número de grupos (distintos) dos personagens escolhidos + o número de
+    # grupos dos atores restantes (que não foram escolhidos) satisfaz o valor mínimo
     grupos = dict()
-    for ator in A_ESCOLHIDOS:
-        # conta o numero de grupos que já foi satisfeito
-        for grupo_indice in ator.grupos:
-            grupos[grupo_indice] = 1
+    for ator in a_escolhidos:
+        for n_grupo in ator.grupos:
+            grupos[n_grupo] = 1
 
-    for ator in A_FALTAM:
-        # conta o numero de grupos que já foi satisfeito
-        for grupo_indice in ator.grupos:
-            grupos[grupo_indice] = 1
-
-    size_e = len(A_ESCOLHIDOS)
-    size_f = len(A_FALTAM)
-
-    if (size_e + size_f) < N_PERSONAGENS:
-        # se o numero de atores escolhidos+faltantes for menor que o n de personagens total, n é viavel
-        return False
+    for ator in f_faltam:
+        for n_grupo in ator.grupos:
+            grupos[n_grupo] = 1
 
     if len(grupos) < L_GRUPOS:
-        # se o numero de grupos já escolhidos+faltantes for menor que o n de grupos total, n é viavel
-        return False
+        return True
 
-    return True
-
-
-def ordena():
-    """funcao que devolve uma lista ordenada"""
-    global A_FALTAM
-    # alterar no futuro para buscar melhorias
-    faltam = A_FALTAM.copy()
-    return faltam.sort()
-
-
-def limitante_dada():
-    """faz o calculo do valor total com a limitante do professor"""
-    global A_ESCOLHIDOS
-    global N_PERSONAGENS
-
-    v_total = 0
-    for ator in A_ESCOLHIDOS:
-        v_total += ator.valor
-    menor = ordena()[0]
-    v_total += (N_PERSONAGENS - len(A_ESCOLHIDOS)) * menor
-    return v_total
-
-
-def limitante_alunas():
-    """faz o calculo do valor total com a limitante feita"""
-    global A_ESCOLHIDOS
-    global A_FALTAM
-    global N_PERSONAGENS
-    v_total = 0
-    i = 0
-    for ator in A_ESCOLHIDOS:
-        v_total += ator.valor
-    total_escolhidos = len(A_ESCOLHIDOS)
-    total_faltam = len(A_FALTAM)
-
-    while total_escolhidos < N_PERSONAGENS and i < total_faltam:
-        v_total += A_FALTAM[i].valor
-        i += 1
-        total_escolhidos += 1
-    return v_total
-
-
-def leitura():
-    """ "Lê todos os dados de entrada"""
-    global L_GRUPOS
-    global M_ATORES
-    global N_PERSONAGENS
-    # leitura dos valores iniciais
-    entrada = sys.stdin.readlines()
-    for i, linha in enumerate(entrada):
-        entrada[i] = linha.replace("\n", "")
-    linha = entrada[0].split(" ")
-
-    L_GRUPOS = int(linha[0])  # num de grupos
-    M_ATORES = int(linha[1])  # num de atores
-    N_PERSONAGENS = int(linha[2])  # num de personagens
-
-    indice = 1
-    for i in range(M_ATORES):
-        linha = entrada[indice].split(" ")
-        ator_v = int(linha[0])
-        ator_s = int(linha[1])
-        grupos = []
-        indice += 1
-
-        for j in range(ator_s):
-            grupos.append(int(entrada[indice]))
-            indice += 1
-        atores.append(Ator(ator_v, grupos, i + 1))
-
-
-def busca_elenco():
-    """backtraing para buscar o elenco"""
-    global OPT_VALOR
-    global Xopt
-    global C_VIABILIDADE
-    global C_OTIMALIDADE
-    global A_FALTAM
-    global A_ESCOLHIDOS
-    # verifica se é viavel
-
-    (viavel, nova_solucao_otima) = solucao_viavel()
-
-    # se é viavel, atualiza os valores da solucao
-    if viavel:
-        if nova_solucao_otima < OPT_VALOR:
-            OPT_VALOR = nova_solucao_otima
-            print(nova_solucao_otima)
-            Xopt = A_ESCOLHIDOS
-    # nao tem mais atores para verificar
-    if len(A_FALTAM) == 0:
-        return
-
-    # verifica se há corte de viabilidade
-    if C_VIABILIDADE:
-        corte_v = corte_viabilidade()
-        if corte_v:
-            return
-    # verifica se ja corte de otimalidade
-    if C_OTIMALIDADE:
-        v_atual = OPT_VALOR
-        # verifica qual é a funcao limitante
-        if LIMITANTE_DADA:
-            v_atual = limitante_dada()
-        else:
-            v_atual = limitante_alunas()
-
-        if v_atual >= OPT_VALOR:
-            return
-    # ainda falta escolher atores
-    ator = A_FALTAM.pop(0)
-    # decido não escolher o próximo ator
-    busca_elenco()
-    # decido escolher o próximo ator
-    A_ESCOLHIDOS.append(ator)
-    busca_elenco()
-
-
-def main():
-    """inicio com a leitura"""
-    global OPT_VALOR
-    global LIMITANTE_DADA
-    global Xopt
-    OPT_VALOR = sys.maxsize
-
-    # se eh a funcao dos alunos, faz uma ordenacao nos valores
-    start_time = time.time()
-    leitura()
-
-    if not LIMITANTE_DADA:
-        atores.sort(key=lambda x: x.valor)
-
-    # backtracking recursivo
-    busca_elenco()
-    time_end = time.time()
-
-    if len(Xopt) != 0:
-        Xopt.sort(key=lambda x: x.id)
-        print(" ".join(str(x) for x in Xopt))
-        print(OPT_VALOR)
-    else:
-        print("Inviável")
-    print("time: ", str(time_end - start_time), file=sys.stderr)
+    return False
 
 
 if __name__ == "__main__":
