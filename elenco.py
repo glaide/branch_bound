@@ -1,35 +1,42 @@
 #!/usr/bin/python3
 import sys
 import time
-from tracemalloc import start
+
 
 # variavel com o valor solucao otimo
-OPT = sys.maxsize
 
 # conjunto de atores com solucao otima
 Xopt = []
 atores = []
-count = 0
+A_FALTAM = []
+A_ESCOLHIDOS = []
+
+
 # argumentos:
 LIMITANTE_DADA = False  # usar função limitante dos profs.
 C_VIABILIDADE = True  # cortes de viabilidade
 C_OTIMALIDADE = True  # cortes de otimalidade
+L_GRUPOS = 0
+M_ATORES = 0
+N_PERSONAGENS = 0
 
 
 class Ator:
-    def __init__(self, valor, grupos, id):
+    """ator, que possui um valor, percence a grupos com os id passados"""
+
+    def __init__(self, valor, grupos, id_a):
         self.valor = valor
         self.grupos = grupos
-        self.id = id
+        self.id_a = id_a
 
     def __repr__(self):
-        return str(self.id)
+        return str(self.id_a)
 
     def __str__(self):
-        return str(self.id)
+        return str(self.id_a)
 
 
-def solucao_viavel(A_ESCOLHIDOS):
+def solucao_viavel():
     """retorna(viavel: true or false, valor otimo atual)"""
     grupos = dict()
     valor = 0
@@ -52,7 +59,7 @@ def solucao_viavel(A_ESCOLHIDOS):
     return (True, valor)
 
 
-def corte_viabilidade(A_ESCOLHIDOS, A_FALTAM):
+def corte_viabilidade():
     """retorna true or false para fazer o corte de viabilidade"""
     grupos = dict()
     for ator in A_ESCOLHIDOS:
@@ -65,10 +72,10 @@ def corte_viabilidade(A_ESCOLHIDOS, A_FALTAM):
         for grupo_indice in ator.grupos:
             grupos[grupo_indice] = 1
 
-    size_E = len(A_ESCOLHIDOS)
-    size_F = len(A_FALTAM)
+    size_e = len(A_ESCOLHIDOS)
+    size_f = len(A_FALTAM)
 
-    if (size_E + size_F) < N_PERSONAGENS:
+    if (size_e + size_f) < N_PERSONAGENS:
         # se o numero de atores escolhidos+faltantes for menor que o n de personagens total, n é viavel
         return False
 
@@ -79,22 +86,25 @@ def corte_viabilidade(A_ESCOLHIDOS, A_FALTAM):
     return True
 
 
-def min(A_FALTAM):
+def ordena():
+    """funcao que devolve uma lista ordenada"""
     # alterar no futuro para buscar melhorias
     faltam = A_FALTAM.copy()
     return faltam.sort()
 
 
-def limitante_dada(A_ESCOLHIDOS, A_FALTAM):
+def limitante_dada():
+    """faz o calculo do valor total com a limitante do professor"""
     v_total = 0
     for ator in A_ESCOLHIDOS:
         v_total += ator.valor
-    menor = min(A_FALTAM)
-    v_total += (N_PERSONAGENS - len(A_ESCOLHIDOS)) * menor[0]
+    menor = ordena()[0]
+    v_total += (N_PERSONAGENS - len(A_ESCOLHIDOS)) * menor
     return v_total
 
 
-def limitante_alunas(A_ESCOLHIDOS, A_FALTAM):
+def limitante_alunas():
+    """faz o calculo do valor total com a limitante feita"""
     v_total = 0
     i = 0
     for ator in A_ESCOLHIDOS:
@@ -111,9 +121,7 @@ def limitante_alunas(A_ESCOLHIDOS, A_FALTAM):
 
 def leitura():
     """ "Lê todos os dados de entrada"""
-    global L_GRUPOS
-    global M_ATORES
-    global N_PERSONAGENS
+
     # leitura dos valores iniciais
     entrada = sys.stdin.readlines()
     for i, linha in enumerate(entrada):
@@ -121,80 +129,86 @@ def leitura():
     linha = entrada[0].split(" ")
 
     L_GRUPOS = int(linha[0])  # num de grupos
+
     M_ATORES = int(linha[1])  # num de atores
+
     N_PERSONAGENS = int(linha[2])  # num de personagens
+    indice = 1
     for i in range(M_ATORES):
-        linha = entrada[i + 1].split(" ")
+        linha = entrada[indice].split(" ")
         ator_v = int(linha[0])
         ator_s = int(linha[1])
         grupos = []
+        indice += 1
+
         for j in range(ator_s):
-            grupos.append(j + 1)
+            grupos.append(int(entrada[indice]))
+            indice += 1
         atores.append(Ator(ator_v, grupos, i + 1))
 
 
 def main():
     """inicio com a leitura"""
 
-    leitura()
-    global A_ESCOLHIDOS
-    global A_FALTAM
-    A_FALTAM = []
-    A_ESCOLHIDOS = []
     # se eh a funcao dos alunos, faz uma ordenacao nos valores
     start_time = time.time()
+    leitura()
 
     if not LIMITANTE_DADA:
         atores.sort(key=lambda x: x.valor)
-    busca_elenco(A_ESCOLHIDOS, atores)
+
+    # backtracking recursivo
+    busca_elenco()
     time_end = time.time()
 
-    if len(Xopt):
+    if len(Xopt) != 0:
         Xopt.sort(key=lambda x: x.id)
         print(" ".join(str(x) for x in Xopt))
         print(OPT)
     else:
         print("Inviável")
 
-    print(str(count) + "\n" + str(time_end - start_time), file=sys.stderr)
+    print("time: ", str(time_end - start_time), file=sys.stderr)
 
 
-def busca_elenco(A_ESCOLHIDOS, A_FALTAM):
+def busca_elenco():
+    """ "backtraing para buscar o elenco"""
     # verifica se é viavel
-    (viavel, nova_solucao_otima) = solucao_viavel(A_ESCOLHIDOS)
+    (viavel, nova_solucao_otima) = solucao_viavel()
+    global OPT
+    OPT = 0
     # se é viavel, atualiza os valores da solucao
     if viavel:
         if nova_solucao_otima < OPT:
             OPT = nova_solucao_otima
             Xopt = A_ESCOLHIDOS
     # nao tem mais atores para verificar
-    if not len(atores):
+    if len(A_FALTAM) == 0:
         return
 
     # verifica se há corte de viabilidade
     if C_VIABILIDADE:
-        corte_v = corte_viabilidade(A_ESCOLHIDOS, A_FALTAM)
+        corte_v = corte_viabilidade()
         if corte_v:
             return
     # verifica se ja corte de otimalidade
     if C_OTIMALIDADE:
+        v_atual = OPT
         # verifica qual é a funcao limitante
         if LIMITANTE_DADA:
-            v_atual = limitante_dada(A_ESCOLHIDOS, A_FALTAM)
+            v_atual = limitante_dada()
         else:
-            v_atual = limitante_alunas(A_ESCOLHIDOS, A_FALTAM)
+            v_atual = limitante_alunas()
 
         if v_atual >= OPT:
             return
     # ainda falta escolher atores
-    e_atores = A_ESCOLHIDOS.copy()
-    f_atores = A_FALTAM.copy()
-    ator = f_atores.pop(0)
+    ator = A_FALTAM.pop(0)
     # decido não escolher o próximo ator
-    busca_elenco(e_atores, f_atores)
+    busca_elenco()
     # decido escolher o próximo ator
-    e_atores.append(ator)
-    busca_elenco(e_atores, f_atores)
+    A_ESCOLHIDOS.append(ator)
+    busca_elenco()
 
 
 if __name__ == "__main__":
