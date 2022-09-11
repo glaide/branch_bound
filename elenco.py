@@ -13,6 +13,8 @@ N_PERSONAGENS = 0
 LIMITANTE_DADA = False
 C_VIABILIDADE = True
 C_OTIMALIDADE = True
+NUM_CORTES_OTIMALIDADE = 0
+NUM_CORTES_VIABILIDADE = 0
 
 
 class Ator:
@@ -49,10 +51,12 @@ def main():
         print("Soluçao inviavel")
 
     print("tempo de execucao: ", str(time_end - time_start), file=sys.stderr)
+    print("Número de cortes por viabilidade: ", NUM_CORTES_VIABILIDADE, "\n")
+    print("Número de cortes por otimalidade: ", NUM_CORTES_OTIMALIDADE, "\n")
 
 
 def leitura():
-    """ "Lê todos os dados de entrada"""
+    """Lê todos os dados de entrada"""
     global L_GRUPOS
     global M_ATORES
     global N_PERSONAGENS
@@ -109,6 +113,9 @@ def limitante_aluna(a_escolhidos, f_faltam):
     i = 0
     # ordena os atores pelo menor valor que cobram
     f_faltam.sort(key=lambda x: x.valor)
+    # enquanto ainda tem personagens para avaliar o preco
+    # e o numero de escolhidos é menor que o total
+    # salva os menores valores dos atores
     while size_e < N_PERSONAGENS and i < size_f:
         total += f_faltam[i].valor
         size_e += 1
@@ -119,37 +126,55 @@ def limitante_aluna(a_escolhidos, f_faltam):
 
 def ordena(atores):
     """funcao que devolve 1o valor de uma lista ordenada"""
-    ator = atores.copy()
-    ator.sort()
-    return ator[0]
+    if len(atores) == 0:
+        return 0
+    ator_ordenado = atores.copy()
+    ator_ordenado.sort(key=lambda x: x.valor)
+    menor_valor = ator_ordenado[0].valor
+    return menor_valor
 
 
 def solucao_viavel(a_escolhidos):
     """retorna(viavel: true or false, valor otimo atual)"""
 
+    # se o numero de atores escolhidos nao é o mesmo que o numero de personagens
+    # entao nao é #uma solucao viavel
     if len(a_escolhidos) != N_PERSONAGENS:
-        return (False, 0)
+        return False
 
     grupos = dict()
-    soma_valor = 0
+    # salva todos os grupos dos atores já escolhidos
     for ator in a_escolhidos:
-        soma_valor += ator.valor
         for n_grupo in ator.grupos:
             grupos[n_grupo] = 1
 
-    if len(grupos) < L_GRUPOS:
-        return (False, 0)
+    # se o numero de grupos dos escolhidos nao satisfaz o numero de grupos totais
+    if len(grupos) != L_GRUPOS:
+        return False
 
-    return (True, soma_valor)
+    return True
+
+
+def calc_valores_otimos(a_escolhidos):
+    """faz o calculo dos valores dos atores, caso seja uma solucao viavel"""
+    soma_valores = 0
+
+    for ator in a_escolhidos:
+        soma_valores += ator.valor
+    return soma_valores
 
 
 def busca_elenco_bb(a_escolhidos, f_faltam):
     """backtraing para buscar o elenco"""
     global OPT
     global X_OPT
+    global NUM_CORTES_OTIMALIDADE
+    global NUM_CORTES_VIABILIDADE
 
-    (viavel, novo_val) = solucao_viavel(a_escolhidos)
+    viavel = solucao_viavel(a_escolhidos)
     if viavel:
+        # caso seja viavel, busca o novo conjunto de solucoes otimas
+        novo_val = calc_valores_otimos(a_escolhidos)
         if novo_val < OPT:
             OPT = novo_val
             X_OPT = a_escolhidos
@@ -158,10 +183,12 @@ def busca_elenco_bb(a_escolhidos, f_faltam):
         return
 
     if C_VIABILIDADE:
+        NUM_CORTES_VIABILIDADE += 1
         if corte_viabilidade(a_escolhidos, f_faltam):
             return
 
     if C_OTIMALIDADE:
+        NUM_CORTES_OTIMALIDADE += 1
         valor_otimo = OPT
         if LIMITANTE_DADA:
             valor_otimo = limitante_dada(a_escolhidos, f_faltam)
@@ -182,11 +209,12 @@ def busca_elenco_bb(a_escolhidos, f_faltam):
 
 def corte_viabilidade(a_escolhidos, f_faltam):
     """retorna true or false para fazer o corte de viabilidade"""
-
+    # faz o corte pois o numero dos atores nao satisfaz o numero de personagens
     if len(f_faltam) + len(a_escolhidos) < N_PERSONAGENS:
         return True
 
     grupos = dict()
+    # busca todos os grupos que já foram preenchidos
     for ator in a_escolhidos:
         for n_grupo in ator.grupos:
             grupos[n_grupo] = 1
@@ -195,7 +223,9 @@ def corte_viabilidade(a_escolhidos, f_faltam):
         for n_grupo in ator.grupos:
             grupos[n_grupo] = 1
 
-    if len(grupos) < L_GRUPOS:
+    # se todos os grupos preenchidos nao equivale ao numero de grupos total
+    # entao nao é viavel
+    if len(grupos) != L_GRUPOS:
         return True
 
     return False
