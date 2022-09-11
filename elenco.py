@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from glob import glob
 import sys
 import time
 
@@ -6,6 +7,7 @@ import time
 # variavel com o valor solucao otimo
 
 # conjunto de atores com solucao otima
+OPT_VALOR = sys.maxsize
 Xopt = []
 atores = []
 A_FALTAM = []
@@ -40,6 +42,9 @@ def solucao_viavel():
     """retorna(viavel: true or false, valor otimo atual)"""
     grupos = dict()
     valor = 0
+    global N_PERSONAGENS
+    global A_ESCOLHIDOS
+    global L_GRUPOS
 
     if len(A_ESCOLHIDOS) != N_PERSONAGENS:
         # se n de escolhidos nao satisfaz o numero de personagens necessarios
@@ -61,6 +66,10 @@ def solucao_viavel():
 
 def corte_viabilidade():
     """retorna true or false para fazer o corte de viabilidade"""
+    global A_ESCOLHIDOS
+    global A_FALTAM
+    global L_GRUPOS
+
     grupos = dict()
     for ator in A_ESCOLHIDOS:
         # conta o numero de grupos que já foi satisfeito
@@ -88,6 +97,7 @@ def corte_viabilidade():
 
 def ordena():
     """funcao que devolve uma lista ordenada"""
+    global A_FALTAM
     # alterar no futuro para buscar melhorias
     faltam = A_FALTAM.copy()
     return faltam.sort()
@@ -95,6 +105,9 @@ def ordena():
 
 def limitante_dada():
     """faz o calculo do valor total com a limitante do professor"""
+    global A_ESCOLHIDOS
+    global N_PERSONAGENS
+
     v_total = 0
     for ator in A_ESCOLHIDOS:
         v_total += ator.valor
@@ -105,6 +118,9 @@ def limitante_dada():
 
 def limitante_alunas():
     """faz o calculo do valor total com a limitante feita"""
+    global A_ESCOLHIDOS
+    global A_FALTAM
+    global N_PERSONAGENS
     v_total = 0
     i = 0
     for ator in A_ESCOLHIDOS:
@@ -121,7 +137,9 @@ def limitante_alunas():
 
 def leitura():
     """ "Lê todos os dados de entrada"""
-
+    global L_GRUPOS
+    global M_ATORES
+    global N_PERSONAGENS
     # leitura dos valores iniciais
     entrada = sys.stdin.readlines()
     for i, linha in enumerate(entrada):
@@ -129,10 +147,9 @@ def leitura():
     linha = entrada[0].split(" ")
 
     L_GRUPOS = int(linha[0])  # num de grupos
-
     M_ATORES = int(linha[1])  # num de atores
-
     N_PERSONAGENS = int(linha[2])  # num de personagens
+
     indice = 1
     for i in range(M_ATORES):
         linha = entrada[indice].split(" ")
@@ -147,8 +164,59 @@ def leitura():
         atores.append(Ator(ator_v, grupos, i + 1))
 
 
+def busca_elenco():
+    """backtraing para buscar o elenco"""
+    global OPT_VALOR
+    global Xopt
+    global C_VIABILIDADE
+    global C_OTIMALIDADE
+    global A_FALTAM
+    global A_ESCOLHIDOS
+    # verifica se é viavel
+
+    (viavel, nova_solucao_otima) = solucao_viavel()
+
+    # se é viavel, atualiza os valores da solucao
+    if viavel:
+        if nova_solucao_otima < OPT_VALOR:
+            OPT_VALOR = nova_solucao_otima
+            print(nova_solucao_otima)
+            Xopt = A_ESCOLHIDOS
+    # nao tem mais atores para verificar
+    if len(A_FALTAM) == 0:
+        return
+
+    # verifica se há corte de viabilidade
+    if C_VIABILIDADE:
+        corte_v = corte_viabilidade()
+        if corte_v:
+            return
+    # verifica se ja corte de otimalidade
+    if C_OTIMALIDADE:
+        v_atual = OPT_VALOR
+        # verifica qual é a funcao limitante
+        if LIMITANTE_DADA:
+            v_atual = limitante_dada()
+        else:
+            v_atual = limitante_alunas()
+
+        if v_atual >= OPT_VALOR:
+            return
+    # ainda falta escolher atores
+    ator = A_FALTAM.pop(0)
+    # decido não escolher o próximo ator
+    busca_elenco()
+    # decido escolher o próximo ator
+    A_ESCOLHIDOS.append(ator)
+    busca_elenco()
+
+
 def main():
     """inicio com a leitura"""
+    global OPT_VALOR
+    global LIMITANTE_DADA
+    global Xopt
+    OPT_VALOR = sys.maxsize
 
     # se eh a funcao dos alunos, faz uma ordenacao nos valores
     start_time = time.time()
@@ -164,51 +232,10 @@ def main():
     if len(Xopt) != 0:
         Xopt.sort(key=lambda x: x.id)
         print(" ".join(str(x) for x in Xopt))
-        print(OPT)
+        print(OPT_VALOR)
     else:
         print("Inviável")
-
     print("time: ", str(time_end - start_time), file=sys.stderr)
-
-
-def busca_elenco():
-    """ "backtraing para buscar o elenco"""
-    # verifica se é viavel
-    (viavel, nova_solucao_otima) = solucao_viavel()
-    global OPT
-    OPT = 0
-    # se é viavel, atualiza os valores da solucao
-    if viavel:
-        if nova_solucao_otima < OPT:
-            OPT = nova_solucao_otima
-            Xopt = A_ESCOLHIDOS
-    # nao tem mais atores para verificar
-    if len(A_FALTAM) == 0:
-        return
-
-    # verifica se há corte de viabilidade
-    if C_VIABILIDADE:
-        corte_v = corte_viabilidade()
-        if corte_v:
-            return
-    # verifica se ja corte de otimalidade
-    if C_OTIMALIDADE:
-        v_atual = OPT
-        # verifica qual é a funcao limitante
-        if LIMITANTE_DADA:
-            v_atual = limitante_dada()
-        else:
-            v_atual = limitante_alunas()
-
-        if v_atual >= OPT:
-            return
-    # ainda falta escolher atores
-    ator = A_FALTAM.pop(0)
-    # decido não escolher o próximo ator
-    busca_elenco()
-    # decido escolher o próximo ator
-    A_ESCOLHIDOS.append(ator)
-    busca_elenco()
 
 
 if __name__ == "__main__":
